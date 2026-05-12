@@ -1,9 +1,11 @@
 package Actividades.bstreelinklistinterfgeneric; // Define el paquete donde se encuentra la implementación del árbol BST
 
-import Actividades.bstreeInterface.BinarySearchTree; // Importa la interfaz que contiene los métodos obligatorios del BST
+import Actividades.Exceptions.ExceptionIsEmpty; // Importa la interfaz que contiene los métodos obligatorios del BST
 import Actividades.Exceptions.ItemDuplicated; // Importa la excepción para elementos duplicados
 import Actividades.Exceptions.ItemNoFound; // Importa la excepción para elementos no encontrados
-import Actividades.Exceptions.ExceptionIsEmpty; // Importa la excepción para estructuras vacías
+import Actividades.bstreeInterface.BinarySearchTree; // Importa la excepción para estructuras vacías
+import java.util.LinkedList; // Importación necesaria para el uso de colas en métodos iterativos
+import java.util.Queue;
 
 public class LinkedBST<E extends Comparable<E>> implements BinarySearchTree<E> { // Define una clase genérica BST cuyos elementos pueden compararse
 
@@ -219,4 +221,272 @@ public class LinkedBST<E extends Comparable<E>> implements BinarySearchTree<E> {
 
         return current.data; // Retorna el dato máximo encontrado
     }
+
+    // =========================================================================
+    // NUEVOS MÉTODOS - EJERCICIO 01 (Implementados por Estudiante 4)
+    // =========================================================================
+
+   // a. destroyNodes(): Borra todo el contenido del árbol, pero primero chequea que no esté vacío
+    public void destroyNodes() throws ExceptionIsEmpty {
+        // Si no hay nodos, lanzamos la excepción personalizada según pide la guía [cite: 510]
+        if (isEmpty()) {
+            throw new ExceptionIsEmpty("No se puede destruir: El árbol ya está vacío");
+        }
+        // Al setear la raíz en null, Java desconecta toda la estructura y libera la memoria [cite: 190]
+        this.root = null;
+    }
+
+    // b. countAllNodes(): Punto de entrada para contar los nodos internos (no-hojas) [cite: 511]
+    public int countAllNodes() {
+        return countNonLeafRec(root);
+    }
+
+    // c. countNodes(): Función duplicada para cumplir con los incisos b y c de la guía [cite: 513]
+    public int countNodes() {
+        return countNonLeafRec(root);
+    }
+
+    // Lógica recursiva para contar solo nodos que tienen al menos un hijo
+    private int countNonLeafRec(Node<E> node) {
+        // Si el nodo es nulo o es una hoja (no tiene hijos), no lo contamos [cite: 119]
+        if (node == null || (node.left == null && node.right == null)) {
+            return 0;
+        }
+        // Si llegamos aquí es un nodo interno: sumamos 1 y seguimos buscando en ambas ramas
+        return 1 + countNonLeafRec(node.left) + countNonLeafRec(node.right);
+    }
+
+    // d. height(x): Busca un valor 'x' y calcula la altura de ese subárbol sin usar recursividad [cite: 514, 515]
+    public int height(E x) {
+        Node<E> current = root;
+        // Primero recorremos el BST para localizar el nodo que contiene el dato 'x'
+        while (current != null) {
+            int cmp = x.compareTo(current.data);
+            if (cmp == 0) break; // Lo encontramos
+            // Bajamos por la izquierda si es menor o por la derecha si es mayor [cite: 171, 172]
+            current = (cmp < 0) ? current.left : current.right;
+        }
+
+        // Si el bucle termina y current es null, el valor no existe en el árbol [cite: 516]
+        if (current == null) return -1; 
+
+        // Una vez localizado, calculamos su altura con un algoritmo iterativo
+        return calculateHeightIterative(current);
+    }
+
+    // Método de apoyo para medir la profundidad máxima usando una cola (recorrido por niveles) [cite: 521]
+    private int calculateHeightIterative(Node<E> startNode) {
+        if (startNode == null) return -1;
+        Queue<Node<E>> queue = new LinkedList<>();
+        queue.add(startNode);
+        int h = -1; // La altura de la raíz sola se considera 0 [cite: 125]
+        
+        while (!queue.isEmpty()) {
+            int size = queue.size(); // Cantidad de nodos en el nivel actual
+            h++; 
+            // Procesamos todos los nodos de este nivel antes de pasar al siguiente
+            while (size-- > 0) {
+                Node<E> temp = queue.poll();
+                // Encolamos los hijos para procesarlos como el siguiente nivel de altura
+                if (temp.left != null) queue.add(temp.left);
+                if (temp.right != null) queue.add(temp.right);
+            }
+        }
+        return h;
+    }
+
+    // e. amplitude(): Calcula el ancho máximo del árbol (el nivel con más nodos) [cite: 521]
+    public int amplitude() {
+        if (root == null) return 0;
+        int maxW = 0; // Aquí guardaremos el récord de nodos encontrados en un nivel
+        Queue<Node<E>> q = new LinkedList<>();
+        q.add(root);
+        
+        while (!q.isEmpty()) {
+            // El tamaño actual de la cola nos dice cuántos nodos hay exactamente en este nivel
+            int count = q.size();
+            // Si este nivel es más ancho que los anteriores, actualizamos el máximo
+            if (count > maxW) maxW = count;
+            
+            // Vaciamos el nivel actual y metemos los hijos de estos nodos para el siguiente ciclo
+            while (count-- > 0) {
+                Node<E> temp = q.poll();
+                if (temp.left != null) q.add(temp.left);
+                if (temp.right != null) q.add(temp.right);
+            }
+        }
+        return maxW;
+    }
+
+    // --- EJERCICIO 02.a: areaBST() ---
+    // El área es: (número de hojas) * (altura del árbol)
+    public int areaBST() {
+        if (isEmpty()) return 0;
+
+        int leafCount = 0;
+        int height = -1;
+        Queue<Node<E>> queue = new LinkedList<>();
+        queue.add(root);
+
+        // Usamos un recorrido por niveles (BFS) para contar hojas y calcular altura simultáneamente
+        while (!queue.isEmpty()) {
+            int levelSize = queue.size();
+            height++; // Cada vez que entramos aquí, subimos un nivel de altura
+            
+            for (int i = 0; i < levelSize; i++) {
+                Node<E> temp = queue.poll();
+                
+                // Si no tiene hijos, es una hoja
+                if (temp.left == null && temp.right == null) {
+                    leafCount++;
+                }
+                
+                if (temp.left != null) queue.add(temp.left);
+                if (temp.right != null) queue.add(temp.right);
+            }
+        }
+        return leafCount * height;
+    }
+
+    // --- EJERCICIO 02.b: drawBST() ---
+    // Método público para iniciar la impresión gráfica del árbol en la consola [cite: 527]
+    public void drawBST() {
+        // Validamos si no hay nada que mostrar para evitar errores
+        if (root == null) {
+            System.out.println("Árbol vacío");
+            return;
+        }
+        // Mostramos primero el recorrido lineal y luego la estructura jerárquica
+        System.out.println("Representación del Árbol (InOrder): " + this.toString());
+        drawRec(root, "", true); // Llamada al método recursivo con el prefijo inicial
+    }
+
+    // Método auxiliar para dibujar las ramas y nodos usando caracteres visuales
+    private void drawRec(Node<E> node, String prefix, boolean isLeft) {
+        if (node != null) {
+            // Imprime el prefijo actual y el símbolo de la rama dependiendo de si es hijo izquierdo o derecho
+            System.out.println(prefix + (isLeft ? "├── " : "└── ") + node.data);
+            
+            // Llamadas recursivas para bajar por el árbol
+            // El prefijo se va extendiendo para mantener la alineación de las líneas verticales
+            drawRec(node.left, prefix + (isLeft ? "│   " : "    "), true);
+            drawRec(node.right, prefix + (isLeft ? "│   " : "    "), false);
+        }
+    }
+
+    // --- EJERCICIO 03: parenthesize() ---
+    // Método principal para llamar a la recursión desde la raíz y armar la cadena con paréntesis
+    public String parenthesize() {
+        return parenthesizeRec(root);
+    }
+
+    // Lógica recursiva para mostrar la estructura jerárquica del BST
+    private String parenthesizeRec(Node<E> node) {
+        if (node == null) {
+            return ""; // Caso base: si llegamos a un espacio vacío, no devolvemos texto
+        }
+        
+        // Empezamos guardando el valor del nodo actual como texto
+        String result = node.data.toString();
+        
+        // Si no tiene hijos a los lados, es una hoja y solo retornamos su valor
+        if (node.left == null && node.right == null) {
+            return result;
+        }
+        
+        // Si llegamos acá es porque tiene descendientes, así que abrimos paréntesis para agruparlos
+        result += " (";
+        // Si el hijo izquierdo existe lo procesamos, si no, ponemos un guion como marcador de vacío
+        result += (node.left != null) ? parenthesizeRec(node.left) : "-"; 
+        result += ", "; // Separador entre los dos subárboles
+        // Hacemos lo mismo con el lado derecho
+        result += (node.right != null) ? parenthesizeRec(node.right) : "-";
+        result += ")"; // Cerramos el nivel actual
+        
+        return result;
+    }
+
+    // --- EJERCICIO 04: isValidBST() ---
+    // Método principal que arranca la validación de todo el árbol
+    public boolean isValidBST() {
+        // Iniciamos la recursión pasando null en los límites para representar el infinito
+        return validateBST(root, null, null);
+    }
+
+    // Método de apoyo que revisa si los nodos respetan sus límites según la posición
+    private boolean validateBST(Node<E> node, E min, E max) {
+        // Si llegamos a una hoja o el árbol está vacío, por lógica es válido
+        if (node == null) {
+            return true;
+        }
+
+        // Si el nodo actual es menor o igual al mínimo permitido, rompemos la regla
+        if (min != null && node.data.compareTo(min) <= 0) {
+            return false;
+        }
+        
+        // Si el nodo actual es mayor o igual al máximo permitido, también está mal
+        if (max != null && node.data.compareTo(max) >= 0) {
+            return false;
+        }
+
+        // Seguimos revisando hacia abajo:
+        // Al ir a la izquierda, el nodo actual se vuelve el nuevo "máximo"
+        // Al ir a la derecha, el nodo actual se convierte en el nuevo "mínimo"
+        return validateBST(node.left, min, node.data) && 
+               validateBST(node.right, node.data, max);
+    }
+
+    // --- EJERCICIO 05.b: searchRange(min, max) ---
+    // Busca y muestra los productos que están en el rango de códigos indicado
+    public void searchRange(E min, E max) {
+        searchRangeRec(root, min, max);
+    }
+
+    private void searchRangeRec(Node<E> node, E min, E max) {
+        if (node == null) return;
+
+        // Si el valor actual es mayor al mínimo, puede haber más a la izquierda
+        if (min.compareTo(node.data) < 0) {
+            searchRangeRec(node.left, min, max);
+        }
+
+        // Si está dentro del rango, lo imprimimos
+        if (min.compareTo(node.data) <= 0 && max.compareTo(node.data) >= 0) {
+            System.out.print(node.data + " ");
+        }
+
+        // Si el valor actual es menor al máximo, puede haber más a la derecha
+        if (max.compareTo(node.data) > 0) {
+            searchRangeRec(node.right, min, max);
+        }
+    }
+
+    // --- EJERCICIO 05.c: countLeaves() ---
+    // Cuenta cuántos productos son nodos hoja (los que no tienen hijos)
+    public int countLeaves() {
+        return countLeavesRec(root);
+    }
+
+    private int countLeavesRec(Node<E> node) {
+        if (node == null) return 0;
+        if (node.left == null && node.right == null) return 1; // Encontramos una hoja
+        return countLeavesRec(node.left) + countLeavesRec(node.right);
+    }
+
+    // --- EJERCICIO 05.d: printDescending() ---
+    // Muestra los productos de mayor a menor (Derecha - Raíz - Izquierda)
+    public void printDescending() {
+        printDescendingRec(root);
+        System.out.println();
+    }
+
+    private void printDescendingRec(Node<E> node) {
+        if (node != null) {
+            printDescendingRec(node.right); // Primero lo más grande
+            System.out.print(node.data + " ");
+            printDescendingRec(node.left); // Al final lo más pequeño
+        }
+    }
+
 }
